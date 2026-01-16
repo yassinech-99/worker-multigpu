@@ -36,7 +36,8 @@ RUN pip install flash_attn==2.7.4.post1 --no-build-isolation || \
 RUN comfy-node-install ComfyUI-Apt_Preset && \
     comfy-node-install ComfyUI-WanAnimatePreprocess && \
     comfy-node-install comfyui-segment-anything-2 && \
-    comfy-node-install wanblockswap
+    comfy-node-install wanblockswap && \
+    comfy-node-install comfyui-multigpu
 
 ## Manually install ComfyUI-SeCNode (consolidated into single RUN)
 RUN cd /comfyui/custom_nodes && \
