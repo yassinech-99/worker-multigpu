@@ -1,0 +1,14 @@
+.env
+
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+
+test/results
+hf_token.txt
+
+entrypoint.sh
+handler_ref.py
+
+*.pem

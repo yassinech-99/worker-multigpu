@@ -1,0 +1,228 @@
+{
+  "1": {
+    "inputs": {
+      "image": "original_1.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "3": {
+    "inputs": {
+      "model_name": "segm/person_yolov8m-seg.pt"
+    },
+    "class_type": "UltralyticsDetectorProvider",
+    "_meta": {
+      "title": "UltralyticsDetectorProvider"
+    }
+  },
+  "4": {
+    "inputs": {
+      "threshold": 0.5,
+      "dilation": 10,
+      "crop_factor": 3,
+      "drop_size": 10,
+      "labels": "all",
+      "bbox_detector": [
+        "3",
+        0
+      ],
+      "image": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "BboxDetectorSEGS",
+    "_meta": {
+      "title": "BBOX Detector (SEGS)"
+    }
+  },
+  "5": {
+    "inputs": {
+      "alpha_mode": true,
+      "min_alpha": 0.2,
+      "segs": [
+        "4",
+        0
+      ],
+      "fallback_image_opt": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "SEGSPreview",
+    "_meta": {
+      "title": "SEGSPreview"
+    }
+  },
+  "6": {
+    "inputs": {
+      "segs": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "ImpactSEGSToMaskBatch",
+    "_meta": {
+      "title": "SEGS to Mask Batch"
+    }
+  },
+  "15": {
+    "inputs": {
+      "threshold": 0.5,
+      "dilation": 10,
+      "crop_factor": 3,
+      "drop_size": 10,
+      "labels": "all",
+      "segm_detector": [
+        "3",
+        1
+      ],
+      "image": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "SegmDetectorSEGS",
+    "_meta": {
+      "title": "SEGM Detector (SEGS)"
+    }
+  },
+  "21": {
+    "inputs": {
+      "width": 480,
+      "height": 832,
+      "padding": 0,
+      "preserve_size": false,
+      "bg_color": "0, 0, 0",
+      "image": [
+        "1",
+        0
+      ],
+      "masks": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "ImageCropByMaskBatch",
+    "_meta": {
+      "title": "Image Crop By Mask Batch"
+    }
+  },
+  "22": {
+    "inputs": {
+      "filename_prefix": "char",
+      "images": [
+        "21",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "23": {
+    "inputs": {
+      "start": 0,
+      "length": [
+        "32",
+        0
+      ],
+      "mask": [
+        "31",
+        0
+      ]
+    },
+    "class_type": "MaskFromBatch+",
+    "_meta": {
+      "title": "🔧 Mask From Batch"
+    }
+  },
+  "24": {
+    "inputs": {
+      "mask": [
+        "23",
+        0
+      ]
+    },
+    "class_type": "MaskToImage",
+    "_meta": {
+      "title": "Convert Mask to Image"
+    }
+  },
+  "25": {
+    "inputs": {
+      "filename_prefix": "mask",
+      "images": [
+        "24",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "26": {
+    "inputs": {
+      "mask": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "easy isMaskEmpty",
+    "_meta": {
+      "title": "Is Mask Empty"
+    }
+  },
+  "29": {
+    "inputs": {
+      "boolean": [
+        "26",
+        0
+      ]
+    },
+    "class_type": "Logic NOT",
+    "_meta": {
+      "title": "Logic NOT"
+    }
+  },
+  "31": {
+    "inputs": {
+      "segs": [
+        "15",
+        0
+      ]
+    },
+    "class_type": "ImpactSEGSToMaskBatch",
+    "_meta": {
+      "title": "SEGS to Mask Batch"
+    }
+  },
+  "32": {
+    "inputs": {
+      "any": [
+        "31",
+        0
+      ]
+    },
+    "class_type": "easy lengthAnything",
+    "_meta": {
+      "title": "Length Any"
+    }
+  },
+  "33": {
+    "inputs": {
+      "INT": [
+        "32",
+        0
+      ]
+    },
+    "class_type": "Bjornulf_ShowInt",
+    "_meta": {
+      "title": "👁 Show (Int)"
+    }
+  }
+}

@@ -1,0 +1,79 @@
+# syntax=docker/dockerfile:1.7
+
+# start from a clean base image (replace <version> with the desired release)
+FROM runpod/worker-comfyui:5.4.1-base-cuda12.8.1 AS base
+
+
+
+# install custom nodes using comfy-cli
+# basic utility nodes
+RUN comfy-node-install comfyui-kjnodes rgthree-comfy comfyui-easy-use
+RUN comfy-node-install comfyui-impact-pack comfyui_essentials comfyui-custom-scripts comfyui-impact-subpack
+RUN comfy-node-install cg-use-everywhere comfyui_layerstyle was-node-suite-comfyui efficiency-nodes-comfyui
+RUN comfy-node-install comfyui-logicutils comfyui-inspire-pack bjornulf_custom_nodes
+RUN comfy-node-install was-node-suite-comfyui
+
+# image processing nodes
+RUN comfy-node-install comfyui_controlnet_aux comfyui-frame-interpolation comfyui_ultimatesdupscale
+RUN comfy-node-install comfyui_ipadapter_plus ComfyUI-GGUF ComfyUI-Crystools teacache comfyui-advanced-controlnet
+RUN comfy-node-install comfyui-inpaint-cropandstitch comfyui-rmbg
+RUN comfy-node-install comfyui_faceanalysis
+RUN comfy-node-install comfyui_patches_ll
+
+# video processing nodes
+RUN comfy-node-install comfyui-videohelpersuite comfyui-florence2 ComfyUI-WanVideoWrapper
+
+
+
+# download models using comfy-cli
+# the "--filename" is what you use in your ComfyUI workflow
+# RUN comfy model download --url https://huggingface.co/h94/IP-Adapter/resolve/main/models/ip-adapter-plus_sd15.bin --relative-path models/ipadapter --filename ip-adapter-plus_sd15.bin
+# RUN comfy model download --url https://huggingface.co/shiertier/clip_vision/resolve/main/SD15/model.safetensors --relative-path models/clip_vision --filename models.safetensors
+
+# UNET
+RUN comfy model download --url https://huggingface.co/black-forest-labs/FLUX.1-Fill-dev/resolve/main/flux1-fill-dev.safetensors --relative-path models/unet --filename flux1-fill-dev.safetensors
+RUN comfy model download --url https://huggingface.co/black-forest-labs/FLUX.1-Kontext-dev/resolve/main/flux1-kontext-dev.safetensors --relative-path models/unet --filename flux1-kontext-dev.safetensors
+
+
+# VAE
+RUN comfy model download --url https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/ae.safetensors --relative-path models/vae --filename ae.safetensors
+
+# CLIP (text encoders)
+RUN comfy model download --url https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors --relative-path models/clip --filename clip_l.safetensors
+RUN comfy model download --url https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp8_e4m3fn.safetensors --relative-path models/clip --filename t5xxl_fp8_e4m3fn.safetensors
+
+# CLIP Vision
+RUN comfy model download --url https://huggingface.co/Comfy-Org/sigclip_vision_384/resolve/main/sigclip_vision_patch14_384.safetensors --relative-path models/clip_vision --filename sigclip_vision_patch14_384.safetensors
+
+# Style models
+RUN comfy model download --url https://huggingface.co/black-forest-labs/FLUX.1-Redux-dev/resolve/main/flux1-redux-dev.safetensors --relative-path models/style_models --filename flux1-redux-dev.safetensors
+
+# LoRAs (provide your sources; often Hugging Face or Civitai)
+RUN comfy model download --url https://huggingface.co/ali-vilab/ACE_Plus/resolve/main/portrait/comfyui_portrait_lora64.safetensors --relative-path models/loras --filename portrait_lora64.safetensors
+RUN comfy model download --url https://huggingface.co/ilkerzgi/Overlay-Kontext-Dev-LoRA/resolve/main/WVVtJFD90b8SsU6EzeGkO_adapter_model_comfy.safetensors --relative-path models/loras --filename Overlay-Kontext-Dev-LoRA.safetensors
+
+# RUN comfy model download --url URL_TO_LORA_CHANGE_HAIRSTYLE --relative-path models/loras --filename Change hairstyle.safetensors
+
+
+# download gated models
+RUN --mount=type=secret,id=hf_token --mount=type=secret,id=civitai_token bash -lc "\
+  set -euo pipefail; \
+  export HUGGINGFACE_TOKEN=$(cat /run/secrets/hf_token); \
+  export HUGGINGFACE_HUB_TOKEN=$HUGGINGFACE_TOKEN; \
+  export CIVITAI_API_KEY=$(cat /run/secrets/civitai_token); \
+  comfy model download --url https://huggingface.co/black-forest-labs/FLUX.1-Fill-dev/resolve/main/flux1-fill-dev.safetensors --relative-path models/unet --filename flux1-fill-dev.safetensors && \
+  comfy model download --url https://huggingface.co/black-forest-labs/FLUX.1-Kontext-dev/resolve/main/flux1-kontext-dev.safetensors --relative-path models/unet --filename flux1-kontext-dev.safetensors && \
+  comfy model download --url https://huggingface.co/black-forest-labs/FLUX.1-Redux-dev/resolve/main/flux1-redux-dev.safetensors --relative-path models/style_models --filename flux1-redux-dev.safetensors && \
+  comfy model download --url https://huggingface.co/Comfy-Org/sigclip_vision_384/resolve/main/sigclip_vision_patch14_384.safetensors --relative-path models/clip_vision --filename sigclip_vision_patch14_384.safetensors \
+"
+
+
+# copy local loras
+COPY models/loras/ /comfyui/models/loras/
+
+
+# final image
+FROM base AS final
+# Copy local static input files into the ComfyUI input directory (delete if not needed)
+# Assumes you have an 'input' folder next to your Dockerfile
+# COPY input/ /comfyui/input/

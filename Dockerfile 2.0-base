@@ -1,0 +1,96 @@
+# start from a clean base image (replace <version> with the desired release)
+FROM runpod/worker-comfyui:5.5.0-base-cuda12.8.1 AS base
+
+# Install system dependencies required for dlib and other packages
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    libopenblas-dev \
+    liblapack-dev \
+    libx11-dev \
+    libgtk-3-dev \
+    libboost-python-dev \
+    libopencv-dev \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# install custom nodes using comfy-cli
+# basic utility nodes
+RUN comfy-node-install comfyui-kjnodes && \
+    comfy-node-install rgthree-comfy && \
+    comfy-node-install comfyui-easy-use
+RUN comfy-node-install comfyui_essentials && \
+    comfy-node-install comfyui-custom-scripts && \
+    comfy-node-install comfyui-impact-pack && \
+    comfy-node-install comfyui-impact-subpack
+RUN comfy-node-install cg-use-everywhere && \
+    comfy-node-install comfyui_layerstyle && \
+    comfy-node-install comfyui-logicutils
+RUN comfy-node-install bjornulf_custom_nodes && \
+    comfy-node-install was-node-suite-comfyui
+
+# image processing nodes
+RUN comfy-node-install comfyui_controlnet_aux && \
+    comfy-node-install comfyui-advanced-controlnet
+RUN comfy-node-install comfyui-inpaint-cropandstitch && \
+    comfy-node-install comfyui-rmbg
+# Install face analysis node with dlib dependency
+RUN comfy-node-install comfyui_faceanalysis || \
+    (echo "Face analysis installation failed, trying alternative approach..." && \
+     cd /comfyui/custom_nodes && \
+     git clone https://github.com/cubiq/ComfyUI_FaceAnalysis.git && \
+     /opt/venv/bin/python -m pip install dlib opencv-python)
+# Install AutoCropFaces node manually
+RUN cd /comfyui/custom_nodes && \
+    git clone https://github.com/liusida/ComfyUI-AutoCropFaces.git
+RUN comfy-node-install comfyui_patches_ll
+
+# video processing nodes
+RUN comfy-node-install comfyui-videohelpersuite && \
+    comfy-node-install comfyui-florence2 && \
+    comfy-node-install ComfyUI-WanVideoWrapper
+# Install TeaCache manually since it's not available via comfy-node-install
+RUN cd /comfyui/custom_nodes && \
+    git clone https://github.com/welltop-cn/ComfyUI-TeaCache.git && \
+    cd ComfyUI-TeaCache && \
+    /opt/venv/bin/python -m pip install -r requirements.txt
+
+
+
+# Install comfy-easy-grids custom node
+RUN cd /comfyui/custom_nodes && \
+    git clone https://github.com/shockz0rz/comfy-easy-grids.git
+
+
+
+# Install ComfyUI_LayerStyle_Advance manually
+RUN cd /comfyui/custom_nodes && \
+    git clone https://github.com/chflame163/ComfyUI_LayerStyle_Advance.git && \
+    cd ComfyUI_LayerStyle_Advance && \
+    pip install ./whl/docopt-0.6.2-py2.py3-none-any.whl && \
+    pip install ./whl/hydra_core-1.3.2-py3-none-any.whl && \
+    pip install -r requirements.txt
+# # Install BEN2_ComfyUI for background removal (BEN2_Base.pth)
+# RUN cd /comfyui/custom_nodes && \
+#     git clone https://github.com/PramaLLC/BEN2_ComfyUI.git
+# Install Human Parser for human segmentation (parsing_lip.onnx)
+RUN cd /comfyui/custom_nodes && \
+    git clone https://github.com/cozymantis/human-parser-comfyui-node.git && \
+    cd human-parser-comfyui-node && \
+    pip install -r requirements.txt
+
+
+
+# Install ComfyUI-QwenEditUtils for improved Qwen Image Edit model usage:
+RUN comfy-node-install qweneditutils
+
+RUN comfy-node-install ComfyUI-1hewNodes
+
+
+
+# final image
+FROM base AS final
+
+COPY handler.py ./
+
+COPY input/ /comfyui/input/

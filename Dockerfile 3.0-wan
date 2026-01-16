@@ -1,0 +1,43 @@
+## start from a clean base image (replace <version> with the desired release)
+FROM ghcr.io/yassinech-99/runpod-comfyui-worker:latest AS base
+
+## Install custom nodes
+RUN comfy-node-install ComfyUI-Apt_Preset
+
+RUN comfy-node-install ComfyUI-WanAnimatePreprocess
+
+RUN comfy-node-install comfyui-segment-anything-2
+
+## manually install ComfyUI-SeCNode
+RUN cd /comfyui/custom_nodes && \
+    git clone https://github.com/9nate-drake/Comfyui-SecNodes && \
+    cd Comfyui-SecNodes && \
+    pip install -r requirements.txt
+
+RUN comfy-node-install wanblockswap
+
+## Install Sage Attention
+RUN pip install -U wheel setuptools packaging
+
+RUN pip install torch==2.7.0+cu128 torchvision torchaudio xformers triton --index-url https://download.pytorch.org/whl/cu128
+
+ENV TORCH_CUDA_ARCH_LIST="8.9;9.0"
+WORKDIR /
+RUN git clone https://github.com/thu-ml/SageAttention.git
+WORKDIR /SageAttention
+RUN sed -i "/compute_capabilities = set()/a compute_capabilities = {\"$TORCH_CUDA_ARCH_LIST\"}" setup.py
+RUN python setup.py install
+RUN pip install flash_attn==2.7.4.post1 --no-build-isolation
+
+
+## final image
+# FROM base AS final
+## Copy local static input files into the ComfyUI input directory (delete if not needed)
+## Assumes you have an 'input' folder next to your Dockerfile
+COPY input/ /comfyui/input/
+
+COPY handler.py ./
+# COPY . .
+# RUN chmod +x /entrypoint.sh
+
+# CMD ["/entrypoint.sh"]

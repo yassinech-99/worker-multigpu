@@ -1,0 +1,22 @@
+# start from a clean base image (replace <version> with the desired release)
+FROM runpod/worker-comfyui:5.5.0-base-cuda12.8.1 AS base
+
+# Install custom nodes
+
+
+
+# Download models
+
+
+
+# final image
+# FROM base AS final
+# Copy local static input files into the ComfyUI input directory (delete if not needed)
+# Assumes you have an 'input' folder next to your Dockerfile
+# COPY input/ /comfyui/input/
+
+COPY handler.py ./
+# COPY . .
+# RUN chmod +x /entrypoint.sh
+
+# CMD ["/entrypoint.sh"]

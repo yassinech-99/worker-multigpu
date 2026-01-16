@@ -1,0 +1,58 @@
+# start from a clean base image (replace <version> with the desired release)
+FROM runpod/worker-comfyui:5.5.0-base-cuda12.8.1 AS base
+
+
+
+# Download SegFormer B2 Clothes model for LayerMask node -- ComfyUI_LayerStyle custom node
+RUN mkdir -p /comfyui/models/segformer_b2_clothes && \
+    wget -P /comfyui/models/segformer_b2_clothes https://huggingface.co/mattmdjaga/segformer_b2_clothes/resolve/main/preprocessor_config.json && \
+    wget -P /comfyui/models/segformer_b2_clothes https://huggingface.co/mattmdjaga/segformer_b2_clothes/resolve/main/pytorch_model.bin && \
+    wget -P /comfyui/models/segformer_b2_clothes https://huggingface.co/mattmdjaga/segformer_b2_clothes/resolve/main/config.json
+
+
+
+# Download models for SAM (SegmentAnythingUltra V2) node
+RUN mkdir -p /comfyui/models/sams && \
+    mkdir -p /comfyui/models/grounding-dino && \
+    # Download SAM models
+    wget -P /comfyui/models/sams https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth && \
+    # Download GroundingDINO models
+    wget -P /comfyui/models/grounding-dino https://huggingface.co/ShilongLiu/GroundingDINO/resolve/main/GroundingDINO_SwinT_OGC.cfg.py && \
+    wget -P /comfyui/models/grounding-dino https://huggingface.co/ShilongLiu/GroundingDINO/resolve/main/groundingdino_swint_ogc.pth
+# Download BERT base uncased for GroundingDINO
+RUN mkdir -p /comfyui/models/bert-base-uncased && \   
+    wget -P /comfyui/models/bert-base-uncased https://huggingface.co/bert-base-uncased/resolve/main/config.json && \
+    wget -P /comfyui/models/bert-base-uncased https://huggingface.co/bert-base-uncased/resolve/main/model.safetensors && \
+    wget -P /comfyui/models/bert-base-uncased https://huggingface.co/bert-base-uncased/resolve/main/tokenizer_config.json && \
+    wget -P /comfyui/models/bert-base-uncased https://huggingface.co/bert-base-uncased/resolve/main/tokenizer.json && \
+    wget -P /comfyui/models/bert-base-uncased https://huggingface.co/bert-base-uncased/resolve/main/vocab.txt
+
+# Download models for human parsing (easy humanSegmentation node)
+RUN mkdir -p /comfyui/models/onnx && \
+    # Download parsing_lip.onnx model for human_parsing_lip method (267MB)
+    wget -P /comfyui/models/onnx https://huggingface.co/levihsu/OOTDiffusion/resolve/main/checkpoints/humanparsing/parsing_lip.onnx
+
+# Download models for background removal nodes (RMBG and BEN2)
+RUN mkdir -p /comfyui/models/rembg && \
+    # Download BEN2_Base.pth model for BEN2 background removal (Public, ~221MB)
+    # Note: ComfyUI auto-downloads to /comfyui/models/rembg/ but we pre-download to avoid runtime delays
+    wget -P /comfyui/models/rembg https://huggingface.co/PramaLLC/BEN2/resolve/main/BEN2_Base.pth
+
+# Note: RMBG-2.0 requires authentication token for download; RMBG-2.0 models granted with non-commercial license only
+RUN --mount=type=secret,id=hf_token \
+if [ -f /run/secrets/hf_token ]; then \
+    export HF_TOKEN=$(cat /run/secrets/hf_token) && \
+    # RMBG-2.0 models go to /comfyui/models/rembg/ same as BEN2 (both are background removal models)
+    wget --header="Authorization: Bearer $HF_TOKEN" -P /comfyui/models/rembg https://huggingface.co/briaai/RMBG-2.0/resolve/main/model.safetensors && \
+    wget --header="Authorization: Bearer $HF_TOKEN" -P /comfyui/models/rembg https://huggingface.co/briaai/RMBG-2.0/resolve/main/config.json; \
+ else \
+    echo "WARNING: hf_token secret not found, skipping RMBG-2.0 downloads"; \
+fi
+
+
+
+# final image
+FROM base AS final
+# Copy local static input files into the ComfyUI input directory (delete if not needed)
+# Assumes you have an 'input' folder next to your Dockerfile
+# COPY input/ /comfyui/input/

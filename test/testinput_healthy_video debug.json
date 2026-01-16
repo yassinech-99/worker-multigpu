@@ -1,0 +1,30 @@
+{
+  "input": {
+    "workflow": {
+      "1": {
+        "inputs": {
+          "file": "input_video.mp4"
+        },
+        "class_type": "LoadVideo"
+      },
+      "2": {
+        "inputs": {
+          "video": [
+            "1",
+            0
+          ],
+          "filename_prefix": "output_video",
+          "format": "mp4",
+          "codec": "h264"
+        },
+        "class_type": "SaveVideo"
+      }
+    },
+    "video": [
+      {
+        "name": "input_video.mp4",
+        "path": "/comfyui/input/driving_video_1.mp4"
+      }
+    ]
+  }
+}
